@@ -12,19 +12,38 @@ class GabettiScraper(AbstractScraper):
     URL = BASE_URL + "/casa/vendita/milano?page={page}"
     NUMERO_PAGINA_INIZIALE = 33
 
-    def is_end_of_pages(self, bs4_page):
+    def _is_fine_delle_pagine(self, bs4_page):
+        """
+        Determina se la pagina corrente è l'ultima pagina di annunci disponibile sul sito.
+
+        :param bs4_page: L'oggetto BeautifulSoup della pagina web corrente.
+        :return: True se è l'ultima pagina, altrimenti False.
+        """
         if bs4_page.find("div", {"class": "error-page___text"}):
             return True
 
         return False
 
-    def _clean_price(self, price: str) -> float | None:
-        if price == "Tratt. Riservata":
+    def _clean_prezzo(self, prezzo: str) -> float | None:
+        """
+        Pulisce e converte la stringa del prezzo in un valore float. Se il prezzo è "Tratt. Riservata",
+        viene restituito NaN.
+
+        :param prezzo: La stringa del prezzo da pulire.
+        :return: Il prezzo come un float o NaN se è "Tratt. Riservata".
+        """
+        if prezzo == "Tratt. Riservata":
             return numpy.nan
 
-        return super()._clean_price(price)
+        return super()._clean_prezzo(prezzo)
 
     def _get_riferimento(self, bs4_page) -> str:
+        """
+        Estrae il riferimento dell'annuncio dalla pagina.
+
+        :param bs4_page: L'oggetto BeautifulSoup della pagina dell'annuncio.
+        :return: La stringa del riferimento dell'annuncio.
+        """
         pattern = re.compile('codice annuncio')
         label = bs4_page.find('span', {"class": 'infos-real-estate-detail__label'}, string=pattern)
 
@@ -36,11 +55,17 @@ class GabettiScraper(AbstractScraper):
         return ""
 
     def _get_annunci_dict(self):
+        """
+        Estrae e restituisce un DataFrame di annunci da Gabetti. Ogni annuncio viene estratto
+        e le sue informazioni vengono pulite e convertite nei tipi di dati appropriati.
+
+        :return: Un DataFrame contenente tutti gli annunci estratti.
+        """
         numero_pagina = self.NUMERO_PAGINA_INIZIALE
         annunci_totali = []
 
         annuncio_id = 1
-        while page := self._get_page(numero_pagina):
+        while page := self._get_pagina(numero_pagina):
             annunci = page.find_all("div", {"class": "box-description-house"})
             for annuncio in annunci:
                 annuncio_dict = {}
@@ -49,7 +74,7 @@ class GabettiScraper(AbstractScraper):
                 if not link:
                     continue
 
-                pagina_annuncio = self._get_page(url=link)
+                pagina_annuncio = self._get_pagina(url=link)
                 if not pagina_annuncio:
                     continue
 
@@ -60,7 +85,7 @@ class GabettiScraper(AbstractScraper):
                     pagina_annuncio.find("div", {"id": "map-detail"})["data-lat"])
                 annuncio_dict["longitudine"] = self._clean_coordinate(
                     pagina_annuncio.find("div", {"id": "map-detail"})["data-lng"])
-                annuncio_dict["prezzo"] = self._clean_price(
+                annuncio_dict["prezzo"] = self._clean_prezzo(
                     pagina_annuncio.find("span", {"class": "price"}).text)
                 annuncio_dict["mq"] = self._clean_mq(pagina_annuncio.find("span", {"class": "icon-square-meters"}).text)
                 annuncio_dict["locali"] = self._clean_locali(pagina_annuncio.find("span", {"class": "icon-room"}).text)
