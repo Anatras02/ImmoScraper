@@ -1,5 +1,7 @@
 import datetime
 import re
+import concurrent.futures
+import warnings
 
 import numpy
 import pandas as pd
@@ -10,7 +12,7 @@ from scrapers.abstract_scraper import AbstractScraper
 class GabettiScraper(AbstractScraper):
     BASE_URL = "https://www.gabetti.it"
     URL = BASE_URL + "/casa/vendita/milano?page={page}"
-    NUMERO_PAGINA_INIZIALE = 33
+    NUMERO_PAGINA_INIZIALE = 1
 
     def _is_fine_delle_pagine(self, bs4_page):
         """
@@ -54,22 +56,61 @@ class GabettiScraper(AbstractScraper):
 
         return ""
 
-    def _get_annunci_dict(self):
-        """
-        Estrae e restituisce un DataFrame di annunci da Gabetti. Ogni annuncio viene estratto
-        e le sue informazioni vengono pulite e convertite nei tipi di dati appropriati.
+    def _get_annuncio(self, pagina_annuncio, link):
+        return {
+            "riferimento": int(self._get_riferimento(pagina_annuncio)), "agenzia": self.id, "link": link,
+            "latitudine": self._clean_coordinate(
+                pagina_annuncio.find("div", {"id": "map-detail"})["data-lat"]),
+            "longitudine": self._clean_coordinate(
+                pagina_annuncio.find("div", {"id": "map-detail"})["data-lng"]),
+            "prezzo": self._clean_prezzo(
+                pagina_annuncio.find("span", {"class": "price"}).text),
+            "mq": self._clean_mq(pagina_annuncio.find("span", {"class": "icon-square-meters"}).text),
+            "locali": self._clean_locali(pagina_annuncio.find("span", {"class": "icon-room"}).text),
+            "data_ultima_modifica_prezzo": datetime.datetime.now()
+        }
 
-        :return: Un DataFrame contenente tutti gli annunci estratti.
-        """
-        numero_pagina = self.NUMERO_PAGINA_INIZIALE
-        annunci_totali = []
+    def _get_annunci_pagina(self, pagina):
+        annunci = pagina.find_all("div", {"class": "box-description-house"})
+        annunci_pagina = []
 
-        annuncio_id = 1
-        while page := self._get_pagina(numero_pagina):
-            annunci = page.find_all("div", {"class": "box-description-house"})
+        for annuncio in annunci:
+            link = self.BASE_URL + annuncio.find("a", {"class": "real_estate_link"})["href"]
+            if not link:
+                continue
+
+            pagina_annuncio = self._get_pagina(url=link)
+            if not pagina_annuncio:
+                continue
+
+            annunci_pagina.append(self._get_annuncio(pagina_annuncio, link))
+
+        return annunci_pagina
+
+    def _get_annunci_pagina_concurrent(self, pagina):
+        """
+        Ottiene annunci dalla pagina fornita e processa ogni annuncio in un thread separato.
+
+        Questo metodo è pericoloso perché effettua un gran numero di richieste simultanee,
+        il che potrebbe portare al crash del sito web target.
+
+        :param pagina: La pagina web da cui estrarre gli annunci.
+        :type pagina: bs4.BeautifulSoup
+        :return: Una lista di annunci estratti dalla pagina.
+        :rtype: list
+        """
+        warnings.warn(
+            "Questo metodo è pericoloso perché effettua molte richieste simultanee e potrebbe "
+            "crashare il sito web target. Usa con cautela!",
+            UserWarning
+        )
+
+        annunci = pagina.find_all("div", {"class": "box-description-house"})
+        annunci_pagina = []
+        futures = []
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
             for annuncio in annunci:
-                annuncio_dict = {}
-
                 link = self.BASE_URL + annuncio.find("a", {"class": "real_estate_link"})["href"]
                 if not link:
                     continue
@@ -78,24 +119,9 @@ class GabettiScraper(AbstractScraper):
                 if not pagina_annuncio:
                     continue
 
-                annuncio_dict["riferimento"] = int(self._get_riferimento(pagina_annuncio))
-                annuncio_dict["agenzia"] = self.id
-                annuncio_dict["link"] = link
-                annuncio_dict["latitudine"] = self._clean_coordinate(
-                    pagina_annuncio.find("div", {"id": "map-detail"})["data-lat"])
-                annuncio_dict["longitudine"] = self._clean_coordinate(
-                    pagina_annuncio.find("div", {"id": "map-detail"})["data-lng"])
-                annuncio_dict["prezzo"] = self._clean_prezzo(
-                    pagina_annuncio.find("span", {"class": "price"}).text)
-                annuncio_dict["mq"] = self._clean_mq(pagina_annuncio.find("span", {"class": "icon-square-meters"}).text)
-                annuncio_dict["locali"] = self._clean_locali(pagina_annuncio.find("span", {"class": "icon-room"}).text)
-                annuncio_dict["data_ultima_modifica_prezzo"] = datetime.datetime.now()
+                futures.append(executor.submit(self._get_annuncio, pagina_annuncio, link))
 
-                annunci_totali.append(annuncio_dict)
-                annuncio_id += 1
+            for future in concurrent.futures.as_completed(futures):
+                annunci_pagina.append(future.result())
 
-                break
-
-            numero_pagina += 1
-
-        return pd.DataFrame(annunci_totali)
+        return annunci_pagina

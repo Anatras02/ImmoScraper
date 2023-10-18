@@ -1,9 +1,12 @@
 import abc
 import logging
+import warnings
 
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
+
+import concurrent.futures
 
 
 class AbstractScraper(abc.ABC):
@@ -22,6 +25,13 @@ class AbstractScraper(abc.ABC):
         Proprietà astratta URL da sovrascrivere nelle sottoclassi.
         """
         pass
+
+    @property
+    def NUMERO_PAGINA_INIZIALE(self):
+        """
+        Proprietà che ritorna il numero della pagina iniziale.
+        """
+        return 1
 
     def _get_url_pagina(self, pagina=None):
         """
@@ -110,7 +120,7 @@ class AbstractScraper(abc.ABC):
             return None
 
     @abc.abstractmethod
-    def _get_annunci_dict(self):
+    def _get_annunci_pagina(self, pagina: BeautifulSoup):
         """
         Metodo astratto per ottenere un dizionario di annunci. Da sovrascrivere nelle sottoclassi.
 
@@ -118,7 +128,7 @@ class AbstractScraper(abc.ABC):
         """
         pass
 
-    def get_annunci(self):
+    def get_annunci_concurrent(self):
         """
         Ottiene un DataFrame degli annunci utilizzando il dizionario di annunci fornito dal metodo _get_annunci_dict.
         Questo metodo utilizza il Template Method Pattern, poiché definisce la struttura dell'algoritmo
@@ -127,7 +137,23 @@ class AbstractScraper(abc.ABC):
 
         :return: DataFrame degli annunci con 'riferimento' come indice.
         """
-        annunci_dict = self._get_annunci_dict()
+        warnings.warn(
+            "Questo metodo è pericoloso perché effettua molte richieste simultanee e potrebbe "
+            "crashare il sito web target. Usa con cautela!",
+            UserWarning
+        )
 
-        annunci_df = pd.DataFrame(annunci_dict)
+        numero_pagina = self.NUMERO_PAGINA_INIZIALE
+        annunci_totali = []
+        futures = []
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            while page := self._get_pagina(numero_pagina):
+                futures.append(executor.submit(self._get_annunci_pagina, page))
+                numero_pagina += 1
+
+        for future in concurrent.futures.as_completed(futures):
+            annunci_totali.extend(future.result())
+
+        annunci_df = pd.DataFrame(annunci_totali)
         return annunci_df.set_index("riferimento")
