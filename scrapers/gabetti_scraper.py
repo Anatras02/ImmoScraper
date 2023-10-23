@@ -1,10 +1,8 @@
 import datetime
 import re
 import concurrent.futures
-import warnings
 
 import numpy
-import pandas as pd
 
 from scrapers.abstract_scraper import AbstractScraper
 
@@ -39,14 +37,8 @@ class GabettiScraper(AbstractScraper):
 
         return super()._clean_prezzo(prezzo)
 
-    def _get_riferimento(self, bs4_page) -> str:
-        """
-        Estrae il riferimento dell'annuncio dalla pagina.
-
-        :param bs4_page: L'oggetto BeautifulSoup della pagina dell'annuncio.
-        :return: La stringa del riferimento dell'annuncio.
-        """
-        pattern = re.compile('codice annuncio')
+    def _get_dettaglio_annuncio_da_label(self, bs4_page, label: str) -> str:
+        pattern = re.compile(label)
         label = bs4_page.find('span', {"class": 'infos-real-estate-detail__label'}, string=pattern)
 
         if label:
@@ -58,7 +50,7 @@ class GabettiScraper(AbstractScraper):
 
     def _get_annuncio(self, pagina_annuncio, link):
         return {
-            "riferimento": int(self._get_riferimento(pagina_annuncio)), "agenzia": self.id, "link": link,
+            "riferimento": int(self._get_dettaglio_annuncio_da_label(pagina_annuncio, "codice annuncio")), "agenzia": self.id, "link": link,
             "latitudine": self._clean_coordinate(
                 pagina_annuncio.find("div", {"id": "map-detail"})["data-lat"]),
             "longitudine": self._clean_coordinate(
@@ -67,27 +59,11 @@ class GabettiScraper(AbstractScraper):
                 pagina_annuncio.find("span", {"class": "price"}).text),
             "mq": self._clean_mq(pagina_annuncio.find("span", {"class": "icon-square-meters"}).text),
             "locali": self._clean_locali(pagina_annuncio.find("span", {"class": "icon-room"}).text),
+            "tipologia": self._clean_tipologia(self._get_dettaglio_annuncio_da_label(pagina_annuncio, "tipologia")),
             "data_ultima_modifica_prezzo": datetime.datetime.now()
         }
 
-    def _get_annunci_pagina(self, pagina):
-        annunci = pagina.find_all("div", {"class": "box-description-house"})
-        annunci_pagina = []
-
-        for annuncio in annunci:
-            link = self.BASE_URL + annuncio.find("a", {"class": "real_estate_link"})["href"]
-            if not link:
-                continue
-
-            pagina_annuncio = self._get_pagina(url=link)
-            if not pagina_annuncio:
-                continue
-
-            annunci_pagina.append(self._get_annuncio(pagina_annuncio, link))
-
-        return annunci_pagina
-
-    def _get_annunci_pagina_concurrent(self, pagina):
+    def _get_annunci_pagina_concurrent(self, pagina, max_workers=1):
         """
         Ottiene annunci dalla pagina fornita e processa ogni annuncio in un thread separato.
 
@@ -99,17 +75,11 @@ class GabettiScraper(AbstractScraper):
         :return: Una lista di annunci estratti dalla pagina.
         :rtype: list
         """
-        warnings.warn(
-            "Questo metodo è pericoloso perché effettua molte richieste simultanee e potrebbe "
-            "crashare il sito web target. Usa con cautela!",
-            UserWarning
-        )
-
         annunci = pagina.find_all("div", {"class": "box-description-house"})
         annunci_pagina = []
         futures = []
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             for annuncio in annunci:
                 link = self.BASE_URL + annuncio.find("a", {"class": "real_estate_link"})["href"]
                 if not link:

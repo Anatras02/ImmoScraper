@@ -1,12 +1,15 @@
 import abc
 import logging
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
 import concurrent.futures
+
+from pandas import DataFrame
 
 
 class AbstractScraper(abc.ABC):
@@ -96,6 +99,36 @@ class AbstractScraper(abc.ABC):
         """
         return float(mq.replace("m²", "").replace(".", "").replace(" ", "").replace(",", ".").replace("mq", ""))
 
+    @staticmethod
+    def _get_tipo_from_dataframe(tipo: str, df: DataFrame) -> int:
+        return df[df["nome"] == tipo].index[0]
+
+    def _clean_tipologia(self, tipologia: str) -> int:
+        tipologie = pd.read_csv("tipologie.csv", index_col="id")
+        tipologia = tipologia.strip().lower()
+
+        match tipologia:
+            case "appartamento":
+                return self._get_tipo_from_dataframe("appartamento", tipologie)
+            case "attico":
+                return self._get_tipo_from_dataframe("attico", tipologie)
+            case "box":
+                return self._get_tipo_from_dataframe("box", tipologie)
+            case "garage":
+                return self._get_tipo_from_dataframe("garage", tipologie)
+            case "casa indipendente":
+                return self._get_tipo_from_dataframe("casa indipendente", tipologie)
+            case "palazzina":
+                return self._get_tipo_from_dataframe("palazzina", tipologie)
+            case "villa":
+                return self._get_tipo_from_dataframe("villa", tipologie)
+            case "rustico":
+                return self._get_tipo_from_dataframe("rustico", tipologie)
+            case "cascina":
+                return self._get_tipo_from_dataframe("cascina", tipologie)
+            case _:
+                return self._get_tipo_from_dataframe("altro", tipologie)
+
     def _get_pagina(self, pagina=None, url=None):
         """
         Recupera il contenuto di una data pagina di annunci utilizzando l'URL fornito o generandolo.
@@ -120,7 +153,7 @@ class AbstractScraper(abc.ABC):
             return None
 
     @abc.abstractmethod
-    def _get_annunci_pagina(self, pagina: BeautifulSoup):
+    def _get_annunci_pagina_concurrent(self, pagina: BeautifulSoup, max_workers=1):
         """
         Metodo astratto per ottenere un dizionario di annunci. Da sovrascrivere nelle sottoclassi.
 
@@ -128,7 +161,7 @@ class AbstractScraper(abc.ABC):
         """
         pass
 
-    def get_annunci_concurrent(self):
+    def get_annunci_concurrent(self, max_workers=3, max_annunci_pagina_workers=2):
         """
         Ottiene un DataFrame degli annunci utilizzando il dizionario di annunci fornito dal metodo _get_annunci_dict.
         Questo metodo utilizza il Template Method Pattern, poiché definisce la struttura dell'algoritmo
@@ -137,19 +170,13 @@ class AbstractScraper(abc.ABC):
 
         :return: DataFrame degli annunci con 'riferimento' come indice.
         """
-        warnings.warn(
-            "Questo metodo è pericoloso perché effettua molte richieste simultanee e potrebbe "
-            "crashare il sito web target. Usa con cautela!",
-            UserWarning
-        )
-
         numero_pagina = self.NUMERO_PAGINA_INIZIALE
         annunci_totali = []
         futures = []
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             while page := self._get_pagina(numero_pagina):
-                futures.append(executor.submit(self._get_annunci_pagina, page))
+                futures.append(executor.submit(self._get_annunci_pagina_concurrent, page, max_annunci_pagina_workers))
                 numero_pagina += 1
 
         for future in concurrent.futures.as_completed(futures):

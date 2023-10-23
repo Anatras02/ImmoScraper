@@ -18,7 +18,7 @@ def get_annunci() -> pd.DataFrame:
 
     for agenzia in AGENZIE:
         scraper = agenzia["scraper"](agenzia["id"])
-        annunci = scraper.get_annunci()
+        annunci = scraper.get_annunci_concurrent(3, 4)
 
         annunci_nuovi = pd.concat([annunci_nuovi, annunci])
 
@@ -43,10 +43,11 @@ def merge_annunci(annunci_vecchi: pd.DataFrame, annunci_nuovi: pd.DataFrame) -> 
             logging.info(f"Nuovo annuncio {riferimento}")
             continue
 
-        if not np.isclose(annuncio_vecchio_relativo["prezzo"], annuncio_nuovo["prezzo"]):
-            logging.info(
-                f"Annuncio {riferimento} ha cambiato prezzo da {annuncio_vecchio_relativo['prezzo']} a {annuncio_nuovo['prezzo']}")
-            annunci_vecchi.loc[riferimento] = annuncio_nuovo
+        if not np.isnan(annuncio_vecchio_relativo["prezzo"]) and not np.isnan(annuncio_nuovo["prezzo"]):
+            if not np.isclose(annuncio_vecchio_relativo["prezzo"], annuncio_nuovo["prezzo"]):
+                logging.info(
+                    f"Annuncio {riferimento} ha cambiato prezzo da {annuncio_vecchio_relativo['prezzo']} a {annuncio_nuovo['prezzo']}")
+                annunci_vecchi.loc[riferimento] = annuncio_nuovo
 
     return annunci_vecchi
 
