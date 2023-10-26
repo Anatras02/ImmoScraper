@@ -1,15 +1,17 @@
 import numpy
 import pandas as pd
-import matplotlib.pyplot as plt
 
-from config.definitions import AGENZIE
-from grafici import plot_grafico_a_torta_numero_annunci, plot_grafico_media_prezzi_nel_tempo
+from grafici import plot_grafico_a_torta_numero_annunci, plot_grafico_media_prezzi_nel_tempo, pairplot_agenzie, \
+    plot_grafico_media_prezzi_nel_tempo_per_categoria
+from grafici.plot_clusterizazzione import plot_clusterizazzione
 
 
 def get_annunci_join_tipologie():
     tipologie = pd.read_csv("tipologie.csv", index_col="id")
+    tipologie = tipologie.add_suffix('_tipologia')
+
     annunci = pd.read_csv("annunci.csv")
-    return pd.merge(annunci, tipologie, left_on="tipologia", right_on="id")
+    return annunci.join(tipologie, on="tipologia", how="inner", rsuffix="_tipologia")
 
 
 def edita_date_annunci(annunci):
@@ -39,6 +41,9 @@ def main():
 
     plot_grafico_a_torta_numero_annunci(annunci)
     plot_grafico_media_prezzi_nel_tempo(annunci)
+    plot_grafico_media_prezzi_nel_tempo_per_categoria(annunci)
+    pairplot_agenzie(annunci)
+    plot_clusterizazzione(annunci)
 
 
 if __name__ == '__main__':

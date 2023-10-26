@@ -1,2 +1,5 @@
 from .grafico_a_torta_numero_annunci import plot_grafico_a_torta_numero_annunci
 from .grafico_media_prezzi_nel_tempo import plot_grafico_media_prezzi_nel_tempo
+from .pairplot_agenzie import pairplot_agenzie
+from .grafico_media_prezzi_nel_tempo_per_categoria import plot_grafico_media_prezzi_nel_tempo_per_categoria
+from .plot_clusterizazzione import plot_clusterizazzione
