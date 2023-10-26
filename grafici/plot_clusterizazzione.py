@@ -36,10 +36,10 @@ def _stampa_media_prezzi_per_mq(centri, scaler, media_prezzo_per_cluster):
 
         # Annota la media del prezzo vicino al centroide con una freccetta e un box
         plt.annotate(
-            f"Media: € {numero_formattato} al mq",
+            f"€ {numero_formattato} al mq",
             (x, y),
             textcoords="offset points",
-            xytext=(125, -25),
+            xytext=(125, -30),
             ha='center',
             arrowprops=dict(facecolor='black', arrowstyle='->'),
             bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.5')
@@ -166,9 +166,7 @@ def plot_clusterizazzione(annunci):
     cluster_e_etichette_ordinati = _get_cluster_e_label_ordinate(appartamenti_senza_prezzi_nan,
                                                                  media_prezzo_per_cluster,
                                                                  media_rapporto_prezzo_mq_per_cluster)
-    for cluster_id, label in cluster_e_etichette_ordinati:
-        subset = appartamenti_senza_prezzi_nan[appartamenti_senza_prezzi_nan["cluster"] == cluster_id]
-        plt.scatter(subset["prezzo"], subset["mq"], label=label, cmap='rainbow')
+    _plot_cluster_data(appartamenti_senza_prezzi_nan, cluster_e_etichette_ordinati)
 
     _stampa_media_prezzi_per_mq(kmeans.cluster_centers_, scaler, media_rapporto_prezzo_mq_per_cluster)
 
