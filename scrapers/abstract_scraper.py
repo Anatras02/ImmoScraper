@@ -104,7 +104,7 @@ class AbstractScraper(abc.ABC):
         return df[df["nome"] == tipo].index[0]
 
     def _clean_tipologia(self, tipologia: str) -> int:
-        tipologie = pd.read_csv("tipologie.csv", index_col="id")
+        tipologie = pd.read_csv("files/tipologie.csv", index_col="id")
         tipologia = tipologia.strip().lower()
 
         match tipologia:

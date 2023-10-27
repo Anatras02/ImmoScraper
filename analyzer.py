@@ -6,23 +6,43 @@ from grafici import plot_grafico_a_torta_numero_annunci, plot_grafico_media_prez
 from grafici.plot_clusterizazzione import plot_clusterizazzione
 
 
-def get_annunci_join_tipologie():
-    tipologie = pd.read_csv("tipologie.csv", index_col="id")
+def _get_annunci_join_tipologie():
+    """
+    Carica i dati relativi agli annunci e le loro tipologie da file CSV.
+
+    :return: Un DataFrame contenente gli annunci uniti alle loro tipologie e agenzie.
+    """
+    tipologie = pd.read_csv("files/tipologie.csv", index_col="id")
     tipologie = tipologie.add_suffix('_tipologia')
+    agenzie = pd.read_csv("files/agenzie.csv", index_col="id")
+    agenzie = agenzie.add_suffix('_agenzia')
 
-    annunci = pd.read_csv("annunci.csv")
-    return annunci.join(tipologie, on="tipologia", how="inner", rsuffix="_tipologia")
+    annunci = pd.read_csv("files/annunci.csv")
+    annunci = annunci.join(tipologie, on="tipologia", how="inner", rsuffix="_tipologia")
+    annunci = annunci.join(agenzie, on="agenzia", how="inner", rsuffix="_agenzia")
+
+    annunci["data_ultima_modifica_prezzo"] = pd.to_datetime(annunci["data_ultima_modifica_prezzo"])
+
+    return annunci
 
 
-def edita_date_annunci(annunci):
+def _edita_date_annunci(annunci):
+    """
+    Modifica la data di ultima modifica prezzo per ogni annuncio in modo casuale.
+
+    :param annunci: DataFrame contenente gli annunci.
+    """
     for i in range(len(annunci)):
         annunci.at[i, "data_ultima_modifica_prezzo"] = numpy.random.choice(
             pd.date_range(start="2023-01-01", end="2023-12-31"))
 
 
 def main():
-    annunci = get_annunci_join_tipologie()
-    edita_date_annunci(annunci)
+    """
+    Funzione principale che esegue l'analisi sugli annunci e mostra vari grafici.
+    """
+    annunci = _get_annunci_join_tipologie()
+    _edita_date_annunci(annunci)
 
     media_prezzo = annunci["prezzo"].mean()
     print(f"Media prezzo: € {media_prezzo:.2f}")

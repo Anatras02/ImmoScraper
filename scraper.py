@@ -1,9 +1,8 @@
+import importlib
 import logging
 
 import numpy as np
 import pandas as pd
-
-from config.definitions import AGENZIE
 
 
 def get_annunci() -> pd.DataFrame:
@@ -15,10 +14,15 @@ def get_annunci() -> pd.DataFrame:
     :return: Un DataFrame contenente tutti gli annunci recuperati da tutte le agenzie.
     """
     annunci_nuovi = pd.DataFrame()
+    agenzie = pd.read_csv("files/agenzie.csv")
 
-    for agenzia in AGENZIE:
-        scraper = agenzia["scraper"](agenzia["id"])
-        annunci = scraper.get_annunci_concurrent(3, 4)
+    for index, agenzia in agenzie.iterrows():
+        module_name, class_name = agenzia["scraper"].rsplit('.', 1)
+        module = importlib.import_module(module_name)
+        _scraper = getattr(module, class_name)
+
+        scraper = _scraper(agenzia["id"])
+        annunci = scraper.get_annunci_concurrent(3, 6)
 
         annunci_nuovi = pd.concat([annunci_nuovi, annunci])
 
@@ -62,15 +66,18 @@ def main():
     piuttosto che gli errori di inserimento o altre modifiche.
     """
     annunci_nuovi = get_annunci()
-    annunci_vecchi = pd.read_csv("annunci.csv", index_col="riferimento")
+    annunci_vecchi = pd.read_csv("files/annunci.csv", index_col="riferimento")
 
-    if not annunci_vecchi.empty and annunci_vecchi.columns.equals(annunci_nuovi.columns):
-        annunci_merge = merge_annunci(annunci_vecchi, annunci_nuovi)
-        annunci_merge.to_csv("annunci.csv")
+    if not annunci_vecchi.empty:
+        if annunci_vecchi.columns.equals(annunci_nuovi.columns):
+            annunci_merge = merge_annunci(annunci_vecchi, annunci_nuovi)
+            annunci_merge.to_csv("files/annunci.csv")
 
-        logging.info("Annunci aggiornati")
+            logging.info("Annunci aggiornati")
+        else:
+            logging.error("Annunci vecchi e nuovi hanno colonne diverse")
     else:
-        logging.error("Annunci vecchi e nuovi hanno colonne diverse, o non ci sono annunci vecchi")
+        annunci_nuovi.to_csv("files/annunci.csv")
 
 
 if __name__ == '__main__':

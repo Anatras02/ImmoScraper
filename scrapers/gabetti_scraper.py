@@ -1,6 +1,6 @@
+import concurrent.futures
 import datetime
 import re
-import concurrent.futures
 
 import numpy
 
@@ -37,7 +37,8 @@ class GabettiScraper(AbstractScraper):
 
         return super()._clean_prezzo(prezzo)
 
-    def _get_dettaglio_annuncio_da_label(self, bs4_page, label: str) -> str:
+    @staticmethod
+    def _get_dettaglio_annuncio_da_label(bs4_page, label: str) -> str:
         pattern = re.compile(label)
         label = bs4_page.find('span', {"class": 'infos-real-estate-detail__label'}, string=pattern)
 
@@ -48,7 +49,15 @@ class GabettiScraper(AbstractScraper):
 
         return ""
 
-    def _get_annuncio(self, pagina_annuncio, link):
+    def _get_annuncio(self, annuncio):
+        link = self.BASE_URL + annuncio.find("a", {"class": "real_estate_link"})["href"]
+        if not link:
+            return None
+
+        pagina_annuncio = self._get_pagina(url=link)
+        if not pagina_annuncio:
+            return None
+
         return {
             "riferimento": int(self._get_dettaglio_annuncio_da_label(pagina_annuncio, "codice annuncio")), "agenzia": self.id, "link": link,
             "latitudine": self._clean_coordinate(
@@ -81,17 +90,11 @@ class GabettiScraper(AbstractScraper):
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             for annuncio in annunci:
-                link = self.BASE_URL + annuncio.find("a", {"class": "real_estate_link"})["href"]
-                if not link:
-                    continue
-
-                pagina_annuncio = self._get_pagina(url=link)
-                if not pagina_annuncio:
-                    continue
-
-                futures.append(executor.submit(self._get_annuncio, pagina_annuncio, link))
+                futures.append(executor.submit(self._get_annuncio, annuncio))
 
             for future in concurrent.futures.as_completed(futures):
-                annunci_pagina.append(future.result())
+                result = future.result()
+                if result:
+                    annunci_pagina.append(result)
 
         return annunci_pagina
