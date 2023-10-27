@@ -1,18 +1,20 @@
 import abc
+import concurrent.futures
 import logging
-import warnings
-from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-
-import concurrent.futures
-
 from pandas import DataFrame
 
 
 class AbstractScraper(abc.ABC):
+    """
+    Classe astratta che rappresenta un estrattore di annunci.
+    Le sottoclassi devono sovrascrivere i metodi astratti per fornire una specifica implementazione
+    in base alle loro esigenze.
+    """
+
     def __init__(self, id_agenzia):
         """
         Inizializza l'estrattore con un dato ID di agenzia.
@@ -25,7 +27,8 @@ class AbstractScraper(abc.ABC):
     @abc.abstractmethod
     def URL(self):
         """
-        Proprietà astratta URL da sovrascrivere nelle sottoclassi.
+        Proprietà astratta URL. Questa proprietà deve essere sovrascritta nelle sottoclassi
+        per fornire l'URL specifico da utilizzare nella scraping.
         """
         pass
 
@@ -33,6 +36,9 @@ class AbstractScraper(abc.ABC):
     def NUMERO_PAGINA_INIZIALE(self):
         """
         Proprietà che ritorna il numero della pagina iniziale.
+        Può essere sovrascritto nelle sottoclassi se necessario.
+
+        :return: Int rappresentante il numero della prima pagina.
         """
         return 1
 
@@ -48,7 +54,8 @@ class AbstractScraper(abc.ABC):
     def _is_fine_delle_pagine(self, bs4_page: BeautifulSoup):
         """
         Determina se la pagina fornita è l'ultima tra quelle disponibili.
-        Di default, restituisce sempre False. Da sovrascrivere nelle sottoclassi se necessario.
+        Di default, restituisce sempre False. Può essere sovrascritto nelle sottoclassi
+        per gestire la logica specifica.
 
         :param bs4_page: Oggetto BeautifulSoup della pagina corrente.
         :return: True se è l'ultima pagina, altrimenti False.
@@ -101,9 +108,27 @@ class AbstractScraper(abc.ABC):
 
     @staticmethod
     def _get_tipo_from_dataframe(tipo: str, df: DataFrame) -> int:
+        """
+        Estrae l'identificatore numerico di un tipo di proprietà specificato dalla DataFrame delle tipologie.
+
+        Questo metodo viene utilizzato per convertire una descrizione testuale della tipologia di proprietà
+        (es. "appartamento", "attico", ecc.) nel suo corrispondente ID numerico, come definito nel file CSV
+        delle tipologie.
+
+        :param tipo: Una stringa che rappresenta il tipo di proprietà.
+        :param df: La DataFrame delle tipologie caricate dal file CSV.
+        :return: L'ID numerico corrispondente al tipo di proprietà specificato.
+        """
         return df[df["nome"] == tipo].index[0]
 
     def _clean_tipologia(self, tipologia: str) -> int:
+        """
+        Pulisce e mappa una stringa di tipologia in un corrispondente identificativo intero.
+        Utilizza un file CSV per effettuare la corrispondenza.
+
+        :param tipologia: Stringa della tipologia da mappare.
+        :return: ID della tipologia come int.
+        """
         tipologie = pd.read_csv("files/tipologie.csv", index_col="id")
         tipologia = tipologia.strip().lower()
 
@@ -163,11 +188,17 @@ class AbstractScraper(abc.ABC):
 
     def get_annunci_concurrent(self, max_workers=3, max_annunci_pagina_workers=2):
         """
-        Ottiene un DataFrame degli annunci utilizzando il dizionario di annunci fornito dal metodo _get_annunci_dict.
-        Questo metodo utilizza il Template Method Pattern, poiché definisce la struttura dell'algoritmo
-        permettendo alle sottoclassi di implementare i dettagli specifici dell'estrazione degli annunci,
-        come definito dal metodo astratto _get_annunci_dict.
+        Estrae gli annunci in modo concorrente.
 
+        Questo metodo utilizza esecutori di thread per eseguire il web scraping in modo concorrente,
+        permettendo una raccolta di dati più veloce. Il numero massimo di thread per l'estrazione
+        di pagine e annunci può essere specificato attraverso i parametri.
+
+        Nota: Aumentare il numero di thread potrebbe aumentare il rischio di essere bloccati dal sito web
+        o causare altri problemi. Usare con cautela.
+
+        :param max_workers: Numero massimo di thread per l'estrazione delle pagine.
+        :param max_annunci_pagina_workers: Numero massimo di thread per l'estrazione degli annunci in una pagina.
         :return: DataFrame degli annunci con 'riferimento' come indice.
         """
         numero_pagina = self.NUMERO_PAGINA_INIZIALE

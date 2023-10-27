@@ -14,7 +14,7 @@ class GabettiScraper(AbstractScraper):
 
     def _is_fine_delle_pagine(self, bs4_page):
         """
-        Determina se la pagina corrente è l'ultima pagina di annunci disponibile sul sito.
+        Verifica se la pagina fornita è l'ultima pagina di annunci sul sito.
 
         :param bs4_page: L'oggetto BeautifulSoup della pagina web corrente.
         :return: True se è l'ultima pagina, altrimenti False.
@@ -26,11 +26,10 @@ class GabettiScraper(AbstractScraper):
 
     def _clean_prezzo(self, prezzo: str) -> float | None:
         """
-        Pulisce e converte la stringa del prezzo in un valore float. Se il prezzo è "Tratt. Riservata",
-        viene restituito NaN.
+        Trasforma la stringa del prezzo in un valore float o NaN.
 
-        :param prezzo: La stringa del prezzo da pulire.
-        :return: Il prezzo come un float o NaN se è "Tratt. Riservata".
+        :param prezzo: Stringa rappresentante il prezzo.
+        :return: Valore float del prezzo o NaN se è "Tratt. Riservata".
         """
         if prezzo == "Tratt. Riservata":
             return numpy.nan
@@ -39,6 +38,13 @@ class GabettiScraper(AbstractScraper):
 
     @staticmethod
     def _get_dettaglio_annuncio_da_label(bs4_page, label: str) -> str:
+        """
+        Estrae il dettaglio dell'annuncio usando una label fornita.
+
+        :param bs4_page: L'oggetto BeautifulSoup della pagina web dell'annuncio.
+        :param label: Label utilizzata per trovare il dettaglio.
+        :return: Dettaglio dell'annuncio o stringa vuota se non trovato.
+        """
         pattern = re.compile(label)
         label = bs4_page.find('span', {"class": 'infos-real-estate-detail__label'}, string=pattern)
 
@@ -49,8 +55,16 @@ class GabettiScraper(AbstractScraper):
 
         return ""
 
-    def _get_annuncio(self, annuncio):
-        link = self.BASE_URL + annuncio.find("a", {"class": "real_estate_link"})["href"]
+    def _get_annuncio(self, link: str) -> dict | None:
+        """
+        Estrae dettagli da un annuncio dato il suo link e restituisce un dizionario con le informazioni ottenute.
+
+        Questa funzione visita il link dell'annuncio fornito come parametro, scarica la pagina dell'annuncio
+        e ne estrae le informazioni dettagliate.
+
+        :param link: Il link dell'annuncio da visitare.
+        :return: Un dizionario con i dettagli dell'annuncio o None se ci sono stati problemi nello scaricamento.
+        """
         if not link:
             return None
 
@@ -74,15 +88,16 @@ class GabettiScraper(AbstractScraper):
 
     def _get_annunci_pagina_concurrent(self, pagina, max_workers=1):
         """
-        Ottiene annunci dalla pagina fornita e processa ogni annuncio in un thread separato.
+        Estrae annunci da una pagina utilizzando thread multipli.
 
-        Questo metodo è pericoloso perché effettua un gran numero di richieste simultanee,
-        il che potrebbe portare al crash del sito web target.
+        Questo metodo usa `ThreadPoolExecutor` per processare ogni annuncio in un thread separato.
+        Tuttavia, l'uso di troppi thread simultaneamente può sovraccaricare il server del sito target.
+        E' fondamentale utilizzare un numero ragionevole di `max_workers` e, se possibile, introdurre dei ritardi
+        tra le richieste per evitare di essere bloccati o di causare problemi al sito.
 
-        :param pagina: La pagina web da cui estrarre gli annunci.
-        :type pagina: bs4.BeautifulSoup
-        :return: Una lista di annunci estratti dalla pagina.
-        :rtype: list
+        :param pagina: Pagina BeautifulSoup da cui estrarre gli annunci.
+        :param max_workers: Numero massimo di thread da utilizzare.
+        :return: Lista di annunci estratti dalla pagina.
         """
         annunci = pagina.find_all("div", {"class": "box-description-house"})
         annunci_pagina = []
@@ -90,7 +105,9 @@ class GabettiScraper(AbstractScraper):
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             for annuncio in annunci:
-                futures.append(executor.submit(self._get_annuncio, annuncio))
+                link = self.BASE_URL + annuncio.find("a", {"class": "real_estate_link"})["href"]
+
+                futures.append(executor.submit(self._get_annuncio, link))
 
             for future in concurrent.futures.as_completed(futures):
                 result = future.result()
