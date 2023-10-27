@@ -8,5 +8,7 @@ def plot_grafico_media_prezzi_nel_tempo(annunci):
                                                                                                min_periods=1).mean()
     annunci_senza_prezzi_nan["media_settimanale"].interpolate(method="linear", inplace=True)
     annunci_senza_prezzi_nan.plot(x='data_ultima_modifica_prezzo', y='media_settimanale')
+    plt.title("Media prezzi nel tempo")
+    plt.tight_layout()
     plt.show()
 
