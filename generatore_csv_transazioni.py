@@ -7,14 +7,29 @@ import pandas as pd
 
 
 def _genera_cf():
+    """
+    Genera un Codice Fiscale (CF) casuale.
+
+    :return: str Il Codice Fiscale generato casualmente.
+    """
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
 
 
 def _genera_id_agenzia():
+    """
+    Genera un ID casuale per un'agenzia.
+
+    :return: str L'ID dell'agenzia generato casualmente.
+    """
     return ''.join(random.choices(string.ascii_uppercase, k=3))
 
 
 def _genera_id_immobile():
+    """
+    Genera un ID casuale per un immobile.
+
+    :return: str L'ID dell'immobile generato casualmente.
+    """
     return f"Casa_{random.randint(0, 1000)}"
 
 
@@ -68,6 +83,14 @@ def _genera_data(data_ultima_transazione=None):
 
 
 def _get_args():
+    """
+    Ottiene gli argomenti dalla linea di comando usando argparse.
+
+    Controlla la validità degli argomenti forniti e restituisce un oggetto che contiene
+    tutti gli argomenti parsati.
+
+    :return: Namespace L'oggetto contenente tutti gli argomenti della riga di comando parsati.
+    """
     parser = argparse.ArgumentParser(description="Impostazioni generazione CSV transazioni")
     parser.add_argument('-n', '--numero_record', type=int, help='Numero di record da generare', required=True)
     parser.add_argument('-u', '--numero_utenti', type=int, help='Numero di utenti da generare', required=True)
@@ -89,6 +112,12 @@ def _get_args():
 
 
 def main():
+    """
+    Funzione principale per generare un file CSV contenente informazioni sulle transazioni.
+
+    Questa funzione genera un numero specificato di record, utenti, agenzie e case e
+    registra le transazioni in un DataFrame. Infine, salva il DataFrame in un file CSV.
+    """
     args = _get_args()
 
     NUM_RECORDS = int(args.numero_record)
