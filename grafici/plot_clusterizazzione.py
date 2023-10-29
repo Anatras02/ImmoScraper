@@ -1,4 +1,5 @@
 import locale
+import logging
 
 from matplotlib import pyplot as plt
 from sklearn.cluster import KMeans
@@ -59,15 +60,11 @@ def _get_label(cluster_id, media_prezzo_per_cluster, media_rapporto_prezzo_mq_pe
     # Questo ci dà una comprensione di quali cluster hanno un buon valore rispetto al prezzo (basso prezzo per mq)
     # e quali sono costosi rispetto alla loro superficie (alto prezzo per mq).
     cluster_ordinati_rapporto = media_rapporto_prezzo_mq_per_cluster.sort_values().index.tolist()
-    print(cluster_ordinati_rapporto)
 
     # Si considera che i primi tre cluster abbiano un basso prezzo per mq, mentre gli ultimi due abbiano un alto prezzo
     # per mq.
     cluster_basso_prezzo_mq = cluster_ordinati_rapporto[:3]
     cluster_alto_prezzo_mq = cluster_ordinati_rapporto[3:]
-
-    print(cluster_basso_prezzo_mq)
-    print(cluster_alto_prezzo_mq)
 
     # Ogni gruppo di cluster (basso o alto prezzo per mq) viene ulteriormente ordinato in base al prezzo totale.
     # Questo permette di determinare, ad esempio, quali "case economiche" sono effettivamente le più economiche in
@@ -154,8 +151,14 @@ def plot_clusterizazzione(annunci):
     appartamenti = annunci[annunci["nome_tipologia"] == "appartamento"].copy()
     appartamenti_senza_prezzi_nan = appartamenti.dropna(subset=["prezzo"]).copy()
     appartamenti_senza_prezzi_nan.sort_values(by="data_ultima_modifica_prezzo", inplace=True)
+    if len(appartamenti_senza_prezzi_nan) <= 0:
+        logging.warning("Non ci sono abbastanza dati per generare i cluster.")
+        return
 
     kmeans, scaler = _genera_clusters(appartamenti_senza_prezzi_nan)
+    if len(kmeans.cluster_centers_) < 6:
+        logging.warning("Non ci sono abbastanza dati per generare i cluster.")
+        return
 
     media_prezzo_per_cluster = appartamenti_senza_prezzi_nan.groupby("cluster")["prezzo"].mean()
     media_mq_per_cluster = appartamenti_senza_prezzi_nan.groupby("cluster")["mq"].mean()
