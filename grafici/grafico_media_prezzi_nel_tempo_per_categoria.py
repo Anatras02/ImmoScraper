@@ -79,7 +79,7 @@ def plot_grafico_media_prezzi_nel_tempo_per_categoria(annunci):
     dati_preparati = prepara_dati(annunci)
     categorie = _get_categorie_con_abbastanza_dati(dati_preparati['nome_tipologia'].unique(), dati_preparati)
 
-    fig, axs = plt.subplots(len(categorie), 1, figsize=(10, 3 * len(categorie)))
+    _, axs = plt.subplots(len(categorie), 1, figsize=(10, 3 * len(categorie)))
 
     # Se c'è solo una categoria, assicurarsi che axs sia una lista
     if len(categorie) == 1:
