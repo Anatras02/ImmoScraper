@@ -1,6 +1,7 @@
 import argparse
 
 import numpy
+import numpy as np
 import pandas as pd
 from geopy.distance import geodesic
 
@@ -21,8 +22,8 @@ def _get_annunci_join_tipologie():
     agenzie = agenzie.add_suffix('_agenzia')
 
     annunci = pd.read_csv("files/annunci.csv")
-    annunci = annunci.join(tipologie, on="tipologia", how="inner", rsuffix="_tipologia")
-    annunci = annunci.join(agenzie, on="agenzia", how="inner", rsuffix="_agenzia")
+    annunci = annunci.join(tipologie, on="tipologia", how="inner", rsuffix="_tipologia", validate="many_to_one")
+    annunci = annunci.join(agenzie, on="agenzia", how="inner", rsuffix="_agenzia", validate="many_to_one")
 
     annunci["data_ultima_modifica_prezzo"] = pd.to_datetime(annunci["data_ultima_modifica_prezzo"])
 
@@ -85,8 +86,16 @@ def _edita_date_annunci(annunci):
     :param annunci: DataFrame contenente gli annunci.
     """
     for i in range(len(annunci)):
-        annunci.at[i, "data_ultima_modifica_prezzo"] = numpy.random.choice(
-            pd.date_range(start="2023-01-01", end="2023-12-31"))
+        # Crea un nuovo generatore di numeri casuali
+        rng = np.random.default_rng(seed=i)
+
+        # Genera un intervallo di date
+        date_range = pd.date_range(start="2023-01-01", end="2023-12-31")
+
+        # Seleziona casualmente una data dall'intervallo
+        random_date = rng.choice(date_range)
+
+        annunci.at[i, "data_ultima_modifica_prezzo"] = random_date
 
 
 def _filtra_per_raggio(df, lat_centrale, lon_centrale, raggio):
