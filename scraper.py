@@ -4,6 +4,8 @@ import logging
 import numpy as np
 import pandas as pd
 
+FILE_AGENZIE_CSV = "files/agenzie.csv"
+
 
 def get_annunci() -> pd.DataFrame:
     """
@@ -14,7 +16,7 @@ def get_annunci() -> pd.DataFrame:
     :return: Un DataFrame contenente tutti gli annunci recuperati da tutte le agenzie.
     """
     annunci_nuovi = pd.DataFrame()
-    agenzie = pd.read_csv("files/agenzie.csv")
+    agenzie = pd.read_csv(FILE_AGENZIE_CSV)
 
     for index, agenzia in agenzie.iterrows():
         module_name, class_name = agenzia["scraper"].rsplit('.', 1)
@@ -66,7 +68,7 @@ def main():
     piuttosto che gli errori di inserimento o altre modifiche.
     """
     annunci_nuovi = get_annunci()
-    annunci_vecchi = pd.read_csv("files/annunci.csv", index_col="riferimento")
+    annunci_vecchi = pd.read_csv(FILE_AGENZIE_CSV, index_col="riferimento")
 
     if not annunci_vecchi.empty:
         if annunci_vecchi.columns.equals(annunci_nuovi.columns):
