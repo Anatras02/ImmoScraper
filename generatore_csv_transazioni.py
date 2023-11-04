@@ -1,4 +1,5 @@
 import argparse
+import logging
 import random
 import string
 from datetime import datetime, timedelta
@@ -111,6 +112,64 @@ def _get_args():
     return args
 
 
+def _cerca_elemento_in_sottoliste(dizionario, elemento):
+    for lista in dizionario.values():
+        if elemento in lista:
+            return True
+
+    return False
+
+
+def _sono_case_tutte_assegnate(case, case_utenti):
+    for casa in case:
+        if not _cerca_elemento_in_sottoliste(case_utenti, casa):
+            return False
+
+    return True
+
+
+def _scegli_venditore_e_casa(case, case_utenti, utenti):
+    casa = None
+
+    if _sono_case_tutte_assegnate(case, case_utenti) or random.random() < 0.8 or len(case) == 0:
+        while True:
+            venditore, case_utente = random.choice(list(case_utenti.items()))
+            if case_utente:
+                casa = random.choice(case_utente)
+                break
+    else:
+        venditore = random.choice(utenti)
+        MAX_TENTATIVI = 10
+        for _ in range(MAX_TENTATIVI):
+            casa = random.choice(case)
+            if not _cerca_elemento_in_sottoliste(case_utenti, casa):
+                break
+
+    return venditore, casa
+
+
+def _scegli_acquirente(venditore, utenti):
+    while True:
+        acquirente = random.choice(utenti)
+        if acquirente != venditore:
+            return acquirente
+
+
+def _calcola_prezzo_e_data(transazioni, casa):
+    transazioni_casa = transazioni[transazioni['immobile'] == casa]
+    if len(transazioni_casa) == 0:
+        prezzo = random.randint(100000, 10000000)
+        data_ultima_transazione = None
+    else:
+        ultima_transazione = transazioni_casa.groupby('immobile').last()
+        prezzo_ultima_transazione = ultima_transazione['prezzo'].iloc[0]
+        data_ultima_transazione = ultima_transazione['data'].iloc[0]
+        variazione_percentuale = random.uniform(-0.30, 0.30)
+        prezzo = round(prezzo_ultima_transazione * (1 + variazione_percentuale))
+
+    return prezzo, data_ultima_transazione
+
+
 def main():
     """
     Funzione principale per generare un file CSV contenente informazioni sulle transazioni.
@@ -139,33 +198,20 @@ def main():
     transazioni = pd.DataFrame(
         columns=['id_transazione', 'acquirente', 'venditore', 'agenzia', 'immobile', 'prezzo', 'data']
     )
-    for i in range(NUM_RECORDS):
-        while True:
-            venditore, case = random.choice(list(case_utenti.items()))
-            if case:
-                casa = random.choice(case)
-                break
 
-        while True:
-            acquirente = random.choice(utenti)
-            if acquirente != venditore:
-                break
+    for i in range(NUM_RECORDS):
+        venditore, casa = _scegli_venditore_e_casa(case, case_utenti, utenti)
+        if casa is None:
+            logging.warning("Non ci sono case disponibili")
+            break
+
+        acquirente = _scegli_acquirente(venditore, utenti)
+        prezzo, data_ultima_transazione = _calcola_prezzo_e_data(transazioni, casa)
         agenzia = random.choice(agenzie)
 
-        transazioni_casa = transazioni[transazioni['immobile'] == casa]
-        if len(transazioni_casa) == 0:
-            prezzo = random.randint(100000, 10000000)
-            data_ultima_transazione = None
-        else:
-            ultima_transazione = transazioni_casa.groupby('immobile').last()
-            prezzo_ultima_transazione = ultima_transazione['prezzo'].iloc[0]
-            data_ultima_transazione = ultima_transazione['data'].iloc[0]
-            variazione_percentuale = random.uniform(-0.30, 0.30)
-
-            prezzo = round(prezzo_ultima_transazione * (1 + variazione_percentuale))
-
         case_utenti.setdefault(acquirente, []).append(casa)
-        case_utenti[venditore].remove(casa)
+        if venditore in case_utenti and casa in case_utenti[venditore]:
+            case_utenti[venditore].remove(casa)
 
         transazioni.loc[i] = {
             'id_transazione': i,
