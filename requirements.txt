@@ -29,3 +29,4 @@ tzdata==2023.3
 urllib3==2.0.6
 
 networkx~=3.2.1
+pygraphviz~=1.11

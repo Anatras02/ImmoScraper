@@ -129,8 +129,6 @@ def _sono_case_tutte_assegnate(case, case_utenti):
 
 
 def _scegli_venditore_e_casa(case, case_utenti, utenti):
-    casa = None
-
     if _sono_case_tutte_assegnate(case, case_utenti) or random.random() < 0.8 or len(case) == 0:
         while True:
             venditore, case_utente = random.choice(list(case_utenti.items()))
@@ -139,20 +137,28 @@ def _scegli_venditore_e_casa(case, case_utenti, utenti):
                 break
     else:
         venditore = random.choice(utenti)
-        MAX_TENTATIVI = 10
-        for _ in range(MAX_TENTATIVI):
+        while True:
             casa = random.choice(case)
             if not _cerca_elemento_in_sottoliste(case_utenti, casa):
                 break
 
+        print(f"Venditore: {venditore}, casa: {casa}")
+
     return venditore, casa
 
 
-def _scegli_acquirente(venditore, utenti):
+def _scegli_acquirente(venditore, utenti, transazioni_casa):
+    ultima_transazione = transazioni_casa.groupby('immobile').last()
+    if ultima_transazione.empty:
+        ultimo_venditore = None
+    else:
+        ultimo_venditore = ultima_transazione['venditore'].iloc[0]
+
     while True:
         acquirente = random.choice(utenti)
         if acquirente != venditore:
-            return acquirente
+            if len(ultima_transazione) == 0 or ultimo_venditore != acquirente:
+                return acquirente
 
 
 def _calcola_prezzo_e_data(transazioni, casa):
@@ -201,11 +207,12 @@ def main():
 
     for i in range(NUM_RECORDS):
         venditore, casa = _scegli_venditore_e_casa(case, case_utenti, utenti)
+        transazioni_casa = transazioni[transazioni['immobile'] == casa]
         if casa is None:
             logging.warning("Non ci sono case disponibili")
             break
 
-        acquirente = _scegli_acquirente(venditore, utenti)
+        acquirente = _scegli_acquirente(venditore, utenti, transazioni_casa)
         prezzo, data_ultima_transazione = _calcola_prezzo_e_data(transazioni, casa)
         agenzia = random.choice(agenzie)
 
