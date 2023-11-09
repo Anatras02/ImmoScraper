@@ -1,9 +1,11 @@
-import matplotlib.pyplot as plt
+"""
+Modulo per analizzare le transazioni
+"""
 import networkx as nx
-import numpy as np
 import pandas as pd
 
-from grafici import plot_grafico_transazioni_per_anno, plot_grafico_funzione_prezzo_transazioni_immobili
+from grafici import plot_grafico_transazioni_per_anno, plot_grafico_funzione_prezzo_transazioni_immobili, \
+    plot_grafico_frequenza_gradi
 from grafo.disegna_grafo import disegna_grafo
 from grafo.genera_grafo import genera_grafo
 
@@ -24,32 +26,12 @@ def main():
     disegna_grafo(grafo_transazioni, mappa_colori)
 
     disegnatore_grafo = nx.nx_agraph.to_agraph(grafo_transazioni)
-    disegnatore_grafo.layout('dot')  # 'dot' è uno dei layout di Graphviz; puoi usarne altri come 'neato'
-    disegnatore_grafo.draw('output/multidigraph.png')  # Salva il grafico come immagine PNG
+    disegnatore_grafo.layout('dot')
+    disegnatore_grafo.draw('output/multidigraph.png')
 
-    transazioni_per_immobile = transazioni.groupby('immobile')
-    numero_immobili = len(transazioni_per_immobile)
-    colonne = int(np.ceil(np.sqrt(numero_immobili)))
-    righe = int(np.ceil(numero_immobili / colonne))
+    # disegna_grafico_grafi_per_immobile(transazioni)
 
-    fig, axs = plt.subplots(righe, colonne, figsize=(colonne * 12, righe * 12))  # Adjust the size as needed
-    axs = axs.flatten()
-
-    for index, (immobile, transazioni_per_immobile) in enumerate(transazioni_per_immobile):
-        grafo_transazioni_immobile, mappa_colori_immobile = genera_grafo(transazioni_per_immobile)
-
-        disegna_grafo(
-            grafo_transazioni_immobile,
-            mappa_colori_immobile,
-            title=f'Transazioni per immobile: {immobile}',
-            ax=axs[index],
-            fig=fig,
-            show=False,
-            disegna_legenda=False
-        )
-
-    fig.tight_layout()
-    fig.show()
+    plot_grafico_frequenza_gradi(grafo_transazioni)
 
 
 if __name__ == '__main__':
