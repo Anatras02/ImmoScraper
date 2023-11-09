@@ -1,8 +1,49 @@
 from typing import Dict, List, Tuple, Any
 
 import networkx as nx
+import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
+
+from grafo.genera_grafo import genera_grafo
+
+
+def disegna_grafico_grafi_per_immobile(transazioni: pd.DataFrame):
+    """
+    Genera una serie di grafici delle transazioni per ogni immobile presente nel DataFrame.
+
+    Ogni immobile verrà rappresentato da un grafo in un subplot separato all'interno di una griglia di grafici.
+    La griglia è dimensionata in base al numero totale di immobili per ottimizzare la visualizzazione.
+
+    :param transazioni: DataFrame che contiene le transazioni, con almeno una colonna chiamata 'immobile'.
+    :type transazioni: pd.DataFrame
+    :return: None. La funzione produce un grafico come output e non restituisce alcun valore.
+
+    """
+    transazioni_per_immobile = transazioni.groupby('immobile')
+    numero_immobili = len(transazioni_per_immobile)
+    colonne = int(np.ceil(np.sqrt(numero_immobili)))
+    righe = int(np.ceil(numero_immobili / colonne))
+
+    fig, axs = plt.subplots(righe, colonne, figsize=(colonne * 12, righe * 12))  # Adjust the size as needed
+    axs = axs.flatten()
+
+    for index, (immobile, transazioni_per_immobile) in enumerate(transazioni_per_immobile):
+        grafo_transazioni_immobile, mappa_colori_immobile = genera_grafo(transazioni_per_immobile)
+
+        disegna_grafo(
+            grafo_transazioni_immobile,
+            mappa_colori_immobile,
+            title=f'Transazioni per immobile: {immobile}',
+            ax=axs[index],
+            fig=fig,
+            show=False,
+            disegna_legenda=False
+        )
+
+    fig.tight_layout()
+    fig.show()
 
 
 def disegna_grafo(grafo, mappa_colori, title=None, ax=None, fig=None, disegna_legenda=True, show=True):
