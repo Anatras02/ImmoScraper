@@ -1,0 +1,8 @@
+[DESIGN]
+min-public-methods=0
+
+[FORMAT]
+max-line-length=120
+
+[MESSAGES CONTROL]
+disable=too-many-ancestors
