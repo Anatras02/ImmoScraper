@@ -52,7 +52,8 @@ def _get_args():
     latitudine, longitudine, raggio e numero dell'agenzia.
 
     :raises argparse.ArgumentError: Se vengono forniti valori non validi o mancanti per alcuni argomenti correlati
-    (ad esempio, se si fornisce la latitudine ma non la longitudine o il raggio, o se il prezzo minimo è maggiore del prezzo massimo).
+    (ad esempio, se si fornisce la latitudine ma non la longitudine o il raggio,
+     o se il prezzo minimo è maggiore del prezzo massimo).
 
     :return: Un oggetto contenente tutti gli argomenti passati.
     :rtype: argparse.Namespace

@@ -67,6 +67,26 @@ def get_mappa_colori(transazioni: pd.DataFrame) -> Dict[str, str]:
 
 
 def get_calcolatore_aumento_prezzo(transazioni: pd.DataFrame) -> Callable[[str, float, int], str]:
+    """
+    Restituisce una funzione interna che calcola l'aumento di prezzo di un'immobile basato sulle transazioni precedenti.
+
+    La funzione interna `get_aumento_prezzo` calcola la differenza di prezzo tra l'ultima transazione registrata per un
+    dato immobile e il prezzo di una nuova transazione. Se non esistono transazioni precedenti per l'immobile,
+    l'aumento corrisponderà al prezzo della transazione attuale.
+
+    :param transazioni: DataFrame contenente le transazioni degli immobili.
+                        È necessario che il DataFrame abbia le colonne 'id_transazione' e 'prezzo'.
+    :type transazioni: pd.DataFrame
+    :return: Una funzione callable che accetta come parametri una stringa che rappresenta l'immobile,
+             un float per il prezzo della transazione e un intero per l'id della transazione.
+             Restituisce una stringa che rappresenta l'aumento del prezzo in euro.
+    :rtype: Callable[[str, float, int], str]
+
+    Note:
+        La funzione restituita mantiene un registro interno delle ultime transazioni per ciascun immobile per calcolare
+        gli aumenti.
+
+    """
     ultime_transazioni_per_immobile = {}
 
     def get_aumento_prezzo(immobile, prezzo_transazione, id_transazione):

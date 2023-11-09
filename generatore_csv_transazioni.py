@@ -1,3 +1,6 @@
+"""
+Genera un file CSV contenente informazioni sulle transazioni.
+"""
 import argparse
 import logging
 import random
@@ -68,10 +71,9 @@ def _genera_data(data_ultima_transazione=None):
     dieci_anni_dopo = start_date + timedelta(days=10 * 365)  # approssimazione di 10 anni
 
     # Probabilità di scegliere una data nell'intervallo 5-10 anni
+    probabilita_5_10_anni = 0.9
     if cinque_anni_dopo > end_date or dieci_anni_dopo > end_date:
         probabilita_5_10_anni = 0
-    else:
-        probabilita_5_10_anni = 0.9
 
     if random.random() < probabilita_5_10_anni:
         delta_5_10 = dieci_anni_dopo - cinque_anni_dopo
@@ -113,6 +115,16 @@ def _get_args():
 
 
 def _cerca_elemento_in_sottoliste(dizionario, elemento):
+    """
+    Cerca un elemento all'interno delle sottoliste di un dizionario.
+
+    :param dizionario: Un dizionario le cui sottoliste verranno esaminate alla ricerca dell'elemento.
+    :type dizionario: dict
+    :param elemento: L'elemento da cercare all'interno delle sottoliste del dizionario.
+    :type elemento: Any
+    :return: True se l'elemento è presente in almeno una delle sottoliste, altrimenti False.
+    :rtype: bool
+    """
     for lista in dizionario.values():
         if elemento in lista:
             return True
@@ -121,6 +133,16 @@ def _cerca_elemento_in_sottoliste(dizionario, elemento):
 
 
 def _sono_case_tutte_assegnate(case, case_utenti):
+    """
+    Verifica se tutte le case nella lista sono state assegnate agli utenti.
+
+    :param case: Una lista di case da controllare.
+    :type case: list
+    :param case_utenti: Un dizionario che associa ogni venditore alle case che ha in vendita.
+    :type case_utenti: dict
+    :return: True se tutte le case sono assegnate, altrimenti False.
+    :rtype: bool
+    """
     for casa in case:
         if not _cerca_elemento_in_sottoliste(case_utenti, casa):
             return False
@@ -129,6 +151,18 @@ def _sono_case_tutte_assegnate(case, case_utenti):
 
 
 def _scegli_venditore_e_casa(case, case_utenti, utenti):
+    """
+    Seleziona un venditore e una casa, basandosi sulle assegnazioni attuali e una probabilità casuale.
+
+    :param case: Una lista di case disponibili.
+    :type case: list
+    :param case_utenti: Un dizionario che associa ogni venditore alle case che ha in vendita.
+    :type case_utenti: dict
+    :param utenti: Una lista di utenti tra cui scegliere il venditore.
+    :type utenti: list
+    :return: Una tupla contenente il venditore selezionato e la casa corrispondente.
+    :rtype: tuple
+    """
     if _sono_case_tutte_assegnate(case, case_utenti) or random.random() < 0.8 or len(case) == 0:
         while True:
             venditore, case_utente = random.choice(list(case_utenti.items()))
@@ -148,6 +182,18 @@ def _scegli_venditore_e_casa(case, case_utenti, utenti):
 
 
 def _scegli_acquirente(venditore, utenti, transazioni_casa):
+    """
+    Seleziona un acquirente diverso dal venditore, che non sia l'ultimo venditore della casa.
+
+    :param venditore: Il venditore attuale della casa.
+    :type venditore: str
+    :param utenti: Una lista di utenti tra cui scegliere l'acquirente.
+    :type utenti: list
+    :param transazioni_casa: DataFrame delle transazioni per una specifica casa.
+    :type transazioni_casa: pd.DataFrame
+    :return: L'acquirente selezionato per la transazione.
+    :rtype: str
+    """
     ultima_transazione = transazioni_casa.groupby('immobile').last()
     if ultima_transazione.empty:
         ultimo_venditore = None
@@ -162,6 +208,16 @@ def _scegli_acquirente(venditore, utenti, transazioni_casa):
 
 
 def _calcola_prezzo_e_data(transazioni, casa):
+    """
+    Calcola il prezzo e la data dell'ultima transazione per una determinata casa.
+
+    :param transazioni: DataFrame contenente le transazioni immobiliari.
+    :type transazioni: pd.DataFrame
+    :param casa: La casa per cui calcolare il prezzo e la data dell'ultima transazione.
+    :type casa: str
+    :return: Il prezzo calcolato e la data dell'ultima transazione (se presente).
+    :rtype: tuple
+    """
     transazioni_casa = transazioni[transazioni['immobile'] == casa]
     if len(transazioni_casa) == 0:
         prezzo = random.randint(100000, 10000000)
@@ -185,27 +241,27 @@ def main():
     """
     args = _get_args()
 
-    NUM_RECORDS = int(args.numero_record)
-    NUM_UTENTI = int(args.numero_utenti)
-    NUM_AGENZIE = int(args.numero_agenzie)
-    NUM_CASE = int(args.numero_case)
+    numero_record = int(args.numero_record)
+    numero_utenti = int(args.numero_utenti)
+    numero_agenzie = int(args.numero_agenzie)
+    numero_case = int(args.numero_case)
 
     # Generazione case
-    case = [_genera_id_immobile() for _ in range(NUM_CASE)]
+    case = [_genera_id_immobile() for _ in range(numero_case)]
 
     # Generazione utenti
-    utenti = [_genera_cf() for _ in range(NUM_UTENTI)]
-    case_univoche = random.sample(case, NUM_UTENTI // 2)
-    case_utenti = {utenti[i]: [case_univoche[i]] for i in range(NUM_UTENTI // 2)}
+    utenti = [_genera_cf() for _ in range(numero_utenti)]
+    case_univoche = random.sample(case, numero_utenti // 2)
+    case_utenti = {utenti[i]: [case_univoche[i]] for i in range(numero_utenti // 2)}
 
     # Generazione agenzie
-    agenzie = [_genera_id_agenzia() for _ in range(NUM_AGENZIE)]
+    agenzie = [_genera_id_agenzia() for _ in range(numero_agenzie)]
 
     transazioni = pd.DataFrame(
         columns=['id_transazione', 'acquirente', 'venditore', 'agenzia', 'immobile', 'prezzo', 'data']
     )
 
-    for i in range(NUM_RECORDS):
+    for i in range(numero_record):
         venditore, casa = _scegli_venditore_e_casa(case, case_utenti, utenti)
         transazioni_casa = transazioni[transazioni['immobile'] == casa]
         if casa is None:

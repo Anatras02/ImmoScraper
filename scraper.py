@@ -1,3 +1,6 @@
+"""
+Modulo per recuperare annunci immobiliari da agenzie immobiliari.
+"""
 import importlib
 import logging
 
