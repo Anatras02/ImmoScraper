@@ -47,7 +47,41 @@ python scraper.py
 
 Questo script prende gli annunci salvati, mostra diverse statistiche e genera grafici.
 
-Esegui lo script con:
+Qui di seguito sono riportate le opzioni che puoi passare via linea di comando allo script `analyzer.py`, che serve per
+analizzare gli annunci salvati:
+
+- `-pm` / `--prezzo_minimo`: Imposta il prezzo minimo per filtrare gli annunci. È un numero intero che rappresenta il
+  prezzo minimo degli annunci da includere nell'analisi.
+- `-pM` / `--prezzo_massimo`: Imposta il prezzo massimo per filtrare gli annunci. È un numero intero che rappresenta il
+  prezzo massimo degli annunci da includere nell'analisi.
+- `-lat` / `--latitudine`: Specifica la latitudine per filtrare gli annunci in base alla loro posizione geografica.
+  Deve essere accompagnata dalla longitudine e dal raggio per definire un'area geografica specifica.
+- `-lon` / `--longitudine`: Specifica la longitudine per filtrare gli annunci in base alla loro posizione geografica.
+  Deve essere usata insieme alla latitudine e al raggio.
+- `-r` / `--raggio`: Definisce il raggio in chilometri per filtrare gli annunci entro una certa distanza dalla
+  latitudine e longitudine fornite.
+- `-a` / `--agenzia`: Permette di filtrare gli annunci in base al numero identificativo dell'agenzia immobiliare. Le
+  opzioni disponibili per questo filtro sono determinate dalle agenzie nel file `agenzie.csv`
+
+Ci sono alcuni vincoli da rispettare quando si usano questi parametri:
+
+- Se specifichi uno tra latitudine, longitudine o raggio, devi specificare anche gli altri due. In altre parole, questi
+  tre parametri devono essere usati insieme per definire una posizione geografica e un'area di ricerca.
+- Il prezzo minimo deve essere inferiore al prezzo massimo. Se si fornisce un valore per il prezzo minimo che è maggiore
+  del prezzo massimo, lo script solleverà un errore.
+
+Per utilizzare queste opzioni, dovresti aggiungere i parametri desiderati al comando di esecuzione dello script. Ad
+esempio:
+
+```
+python analyzer.py --prezzo_minimo 100000 --prezzo_massimo 500000 --latitudine 45.4642 --longitudine 9.1900 --raggio 10 --agenzia GAB
+```
+
+Questo comando filtrerà gli annunci con un prezzo tra 100.000 e 500.000 euro, che si trovano entro un raggio di 10 km
+dalla posizione geografica con latitudine 45.4642 e longitudine 9.1900, e che sono stati pubblicati dall'agenzia con
+identificativo GAB.
+
+Puoi anche eseguire lo script senza parametri con:
 ```
 python analyzer.py
 ```
